@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Coding/C/RaylibthreeLine/build",
+  "command": "C:\\msys64\\clangarm64\\bin\\clang.exe -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP -DUSE_LIBTYPE_SHARED -g -std=gnu11 -Wall -Wextra -Wpedantic -Wshadow -o CMakeFiles\\Matchthree.dir\\main.c.obj -c C:\\Coding\\C\\RaylibthreeLine\\main.c",
+  "file": "C:/Coding/C/RaylibthreeLine/main.c",
+  "output": "C:/Coding/C/RaylibthreeLine/build/CMakeFiles/Matchthree.dir/main.c.obj"
+}
+]
