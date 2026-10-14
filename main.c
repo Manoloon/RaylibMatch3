@@ -14,9 +14,26 @@ Vector2 grid_origin;
 Texture2D backgroundText;
 int score = 000000;
 float fallSpeed = 8.0f;
+float matchDelayTimer = 0.0f;
+const float MATCH_DELAY_DURATION = 0.2f;
+
+float scoreScale = 1.0f;
+float scoreScaleVelocity = 0.0f;
+bool scoreAnimating =false;
+
 char board[BOARD_SIZE][BOARD_SIZE];
 bool matched[BOARD_SIZE][BOARD_SIZE] = {false};
 float fallOffsets[BOARD_SIZE][BOARD_SIZE] = {0};
+typedef struct
+{
+    Vector2 position;
+    int amount;
+    float lifetime;
+    float alpha;
+    bool active;
+}scorePopup;
+
+scorePopup scorePopups[MAX_SCORE_POPUPS] = {0};
 
 typedef enum
 {
@@ -27,13 +44,29 @@ typedef enum
 
 ETileState TileState;
 
-
-char randomTile()
+char randomTile(void)
 {
     return tile_chars[rand() % TILE_TYPES];
 }
 
-bool findMatches()
+void addScorePopup(int x , int y , int amount)
+{
+    for(int i = 0; i < MAX_SCORE_POPUPS; i++)
+    {
+        if(!scorePopups[i].active)
+        {
+            scorePopups[i].position = (Vector2){grid_origin.x + x * TILE_SIZE + TILE_SIZE / 2,
+                                                grid_origin.y + y * TILE_SIZE + TILE_SIZE / 2};
+            scorePopups[i].amount = amount;
+            scorePopups[i].lifetime = 1.0f;
+            scorePopups[i].alpha = 1.0f;
+            scorePopups[i].active = true;   
+            break;
+        }
+    }
+}
+
+bool findMatches(void)
 {
     bool found = false;
     for (int y = 0; y < BOARD_SIZE; y++)
@@ -55,12 +88,11 @@ bool findMatches()
                 score += 10;
                 found = true;
                 // playSound()
-                /*
-                    score_animating = true;
-                    score_scale = 2.0f;
-                    score_scale_velocity = -2.5f;
-                    addScorePopup(x,y,10,grid_origin);
-                    */
+
+                scoreAnimating = true;
+                scoreScale = 2.0f;
+                scoreScaleVelocity = -2.5f;
+                addScorePopup(x,y,10);
             }
         }
     }
@@ -76,18 +108,16 @@ bool findMatches()
                 score += 10;
                 found = true;
                 // playSound()
-                /*
-                    score_animating = true;
-                    score_scale = 2.0f;
-                    score_scale_velocity = -2.5f;
-                    addScorePopup(x,y,10,grid_origin);
-                    */
+                scoreAnimating = true;
+                scoreScale = 2.0f;
+                scoreScaleVelocity = -2.5f;
+                addScorePopup(x,y,10);
             }
         }
     }
     return found;
 }
-void resolveMatches()
+void resolveMatches(void)
 {
     for (int x = 0; x < BOARD_SIZE; x++)
     {
@@ -116,7 +146,7 @@ void resolveMatches()
     TileState = STATE_ANIMATING;
 }
 
-void initBoard()
+void initBoard(void)
 {
     for (int y = 0; y < BOARD_SIZE; y++)
     {
@@ -151,10 +181,6 @@ bool areTilesAdjacent(Vector2 A, Vector2 B)
     return (abs((int)A.x - (int)B.x) + abs((int)A.y - (int)B.y)) == 1;
 }
 
-void addScorePopup(int x , int y , int amount , Vector2 grid_origin)
-{
-
-}
 int main(void)
 {
     const int screen_width = 800;
@@ -193,7 +219,7 @@ int main(void)
                 }
                 else
                 {
-                    if(areTileAdjacent(selected_tile,currentTile))
+                    if(areTilesAdjacent(selected_tile,currentTile))
                     {
                         swapTiles(selected_tile,currentTile);
                         if(findMatches())
@@ -234,7 +260,7 @@ int main(void)
             }
             if(!stillAnim)
             {
-                TileState == STATE_MATCH_DELAY;
+                TileState = STATE_MATCH_DELAY;
                 matchDelayTimer = MATCH_DELAY_DURATION;
             }
         }
@@ -254,9 +280,34 @@ int main(void)
             }
         }
         // Update score popup
-        
+        for(int i = 0; i < MAX_SCORE_POPUPS;i++)
+        {
+            if(scorePopups[i].active)
+            {
+                scorePopups[i].lifetime -= GetFrameTime();
+                scorePopups[i].position.y -= 30 * GetFrameTime();
+                scorePopups[i].alpha = scorePopups[i].lifetime;
+
+                if(scorePopups[i].lifetime <= 0.0f)
+                {
+                    scorePopups[i].active =- false;
+                }
+            }
+        }
+        // update score animation
+        if(scoreAnimating)
+        {
+            scoreScale += scoreScaleVelocity * GetFrameTime();
+            if(scoreScale <= 1.0f)
+            {
+                scoreScale = 1.0f;
+                scoreAnimating = false;
+            }
+        }
+
         BeginDrawing();
         ClearBackground(BLACK);
+
         // Background
         DrawTexturePro(backgroundText,
                        (Rectangle){0, 0, backgroundText.width, backgroundText.height},
@@ -265,11 +316,14 @@ int main(void)
                        0.f,
                        (Color){255, 100, 100, 50});
 
+        DrawRectangle(grid_origin.x,grid_origin.y,BOARD_SIZE*TILE_SIZE,BOARD_SIZE*TILE_SIZE,Fade(DARKGRAY,0.6f));
+
         for (int y = 0; y < BOARD_SIZE; y++)
         {
             for (int x = 0; x < BOARD_SIZE; x++)
             {
                 Rectangle rect = {grid_origin.x + x * TILE_SIZE, grid_origin.y + y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+
                 DrawRectangleLinesEx(rect, 1, DARKGRAY);
 
                 if (board[y][x] != ' ')
@@ -283,6 +337,7 @@ int main(void)
                 }
             }
         }
+
         // DRAW SELECTED TILE
         if (selected_tile.x >= 0)
         {
@@ -294,9 +349,24 @@ int main(void)
                                  YELLOW);
         }
         DrawText(TextFormat("Score: %d", score), 20, 20, 20, YELLOW);
+
+        // Draw score popups
+        for(int i = 0;i < MAX_SCORE_POPUPS;i++)
+        {
+            if(scorePopups[i].active)
+            {
+                Color col = Fade(YELLOW,scorePopups[i].alpha);
+                DrawText(TextFormat("+%d",scorePopups[i].amount),
+                                    scorePopups[i].position.x,
+                                    scorePopups[i].position.y,
+                                    20,col);
+            }
+        }
+
         EndDrawing();
     }
     UnloadTexture(backgroundText);
+    CloseAudioDevice();
     CloseWindow();
     return 0;
 }
