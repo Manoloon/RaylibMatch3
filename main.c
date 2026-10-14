@@ -1,10 +1,13 @@
 #include "raylib.h"
+#include "raymath.h"
 #include <math.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 
 #define BOARD_SIZE 8
+#define BOARD_SQUARED_SIZE BOARD_SIZE*BOARD_SIZE
 #define TILE_SIZE 32
 #define TILE_TYPES 5
 #define MAX_SCORE_POPUPS 32
@@ -21,9 +24,9 @@ float scoreScale = 1.0f;
 float scoreScaleVelocity = 0.0f;
 bool scoreAnimating =false;
 
-char board[BOARD_SIZE][BOARD_SIZE];
-bool matched[BOARD_SIZE][BOARD_SIZE] = {false};
-float fallOffsets[BOARD_SIZE][BOARD_SIZE] = {0};
+char board[BOARD_SQUARED_SIZE];
+bool matched[BOARD_SQUARED_SIZE] = {false};
+float fallOffsets[BOARD_SQUARED_SIZE] = {0};
 typedef struct
 {
     Vector2 position;
@@ -67,14 +70,14 @@ void addScorePopup(int x , int y , int amount)
 }
 bool SearchHorizontally(void)
 {
-        for (int y = 0; y < BOARD_SIZE; y++)
+    for (int y = 0; y < BOARD_SIZE; y++)
     {
         for (int x = 0; x < BOARD_SIZE - 2; x++)
         {
-            char t = board[y][x];
-            if (t == board[y][x + 1] && t == board[y][x + 2])
+            char t = board[y * BOARD_SIZE + x];
+            if (t == board[y * BOARD_SIZE + x + 1] && t == board[y * BOARD_SIZE + x + 2])
             {
-                matched[y][x] = matched[y][x + 1] = matched[y][x + 2] = true;
+                matched[y * BOARD_SIZE + x] = matched[y * BOARD_SIZE + x + 1] = matched[y * BOARD_SIZE + x + 2] = true;
                 score += 10;
                 
                 // playSound()
@@ -95,10 +98,10 @@ bool SearchVertically(void)
     {
         for (int y = 0; y < BOARD_SIZE - 2; y++)
         {
-            char t = board[y][x];
-            if (t == board[y + 1][x] && t == board[y + 2][x])
+            char t = board[y * BOARD_SIZE + x];
+            if (t == board[y+1 * BOARD_SIZE + x] && t == board[y+2 * BOARD_SIZE + x])
             {
-                matched[y][x] = matched[y + 1][x] = matched[y + 2][x] = true;
+                matched[y * BOARD_SIZE + x] = matched[y+1 * BOARD_SIZE + x] = matched[y+2 * BOARD_SIZE + x] = true;
                 score += 10;
                
                 // playSound()
@@ -119,7 +122,7 @@ bool findMatches(void)
     {
         for (int x = 0; x < BOARD_SIZE; x++)
         {
-            matched[y][x] = false;
+            matched[y * BOARD_SIZE + x] = false;
         }
     }
     return SearchHorizontally() || SearchVertically();
@@ -132,13 +135,13 @@ void resolveMatches(void)
         int writeY = BOARD_SIZE - 1;
         for (int y = BOARD_SIZE - 1; y >= 0; y--)
         {
-            if (!matched[y][x])
+            if (!matched[y * BOARD_SIZE + x])
             {
                 if (y != writeY)
                 {
-                    board[writeY][x] = board[y][x];
-                    fallOffsets[writeY][x] = (writeY - y) * TILE_SIZE;
-                    board[y][x] = ' ';
+                    board[writeY * BOARD_SIZE + x] = board[y * BOARD_SIZE + x];
+                    fallOffsets[writeY * BOARD_SIZE + x] = (writeY - y) * TILE_SIZE;
+                    board[y * BOARD_SIZE + x] = ' ';
                 }
                 writeY--;
             }
@@ -146,21 +149,21 @@ void resolveMatches(void)
         // FILL EMPTY SPOTS with RANDOM
         while (writeY >= 0)
         {
-            board[writeY][x] = randomTile();
-            fallOffsets[writeY][x] = (writeY + 1) * TILE_SIZE;
+            board[writeY * BOARD_SIZE + x] = randomTile();
+            fallOffsets[writeY * BOARD_SIZE + x] = (writeY + 1) * TILE_SIZE;
             writeY--;
         }
     }
     TileState = STATE_ANIMATING;
 }
 
-void initBoard(void)
+void initBoard(int numPieces)
 {
-    for (int y = 0; y < BOARD_SIZE; y++)
+    for (int y = 0; y < numPieces; y++)
     {
-        for (int x = 0; x < BOARD_SIZE; x++)
+        for (int x = 0; x < numPieces; x++)
         {
-            board[y][x] = randomTile();
+            board[y * BOARD_SIZE + x] = randomTile();
         }
     }
     // Center screen
@@ -179,9 +182,9 @@ void initBoard(void)
 
 void swapTiles(Vector2 A, Vector2 B)
 {
-    char temp = board[(int)A.y][(int)A.x];
-    board[(int)A.y][(int)A.x] = board[(int)B.y][(int)B.x];
-    board[(int)B.y][(int)B.x] = temp;
+    char temp = board[(int)A.y * BOARD_SIZE + (int)A.x];
+    board[(int)A.y * BOARD_SIZE + (int)A.x] = board[(int)B.y * BOARD_SIZE + (int)B.x];
+    board[(int)B.y * BOARD_SIZE + (int)B.x] = temp;
 }
 
 bool areTilesAdjacent(Vector2 A, Vector2 B)
@@ -249,6 +252,19 @@ void DrawSelectedTile(const Vector2 SelectedTile)
         DrawText(TextFormat("Score: %d", score), 20, 20, 20, YELLOW);
 }
 
+void RotateBoardClockwise(void)
+{
+    char result[BOARD_SQUARED_SIZE];
+    for(int y = 0; y < BOARD_SIZE;y++)
+    {
+        for(int x = 0; x < BOARD_SIZE;x++)
+        {
+            result[y * BOARD_SIZE + x] = board[BOARD_SIZE * (BOARD_SIZE -1) - BOARD_SIZE * x + y];
+        }
+    }
+    memcpy(board, result, sizeof(result));
+}
+
 int main(void)
 {
     const int screen_width = 800;
@@ -268,7 +284,7 @@ int main(void)
     // SetMusicVolume(bgm,0.6f);
     // SetSoundVolume(sfx,0.4f);
 
-    initBoard();
+    initBoard(2);
 
     /////////////////////////// LOOP ////////////////////////////////////
     while (!WindowShouldClose())
@@ -278,33 +294,46 @@ int main(void)
         mouse = GetMousePosition();
 
         /// Gameplay
-        if (TileState == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        if(TileState == STATE_IDLE)
         {
-            int x = (mouse.x - grid_origin.x) / TILE_SIZE;
-            int y = (mouse.y - grid_origin.y) / TILE_SIZE;
-            if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE)
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
             {
-                Vector2 currentTile = (Vector2){x,y};
-                if(selected_tile.x < 0)
+                int x = (mouse.x - grid_origin.x) / TILE_SIZE;
+                int y = (mouse.y - grid_origin.y) / TILE_SIZE;
+                if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE)
                 {
-                    selected_tile = currentTile;
-                }
-                else
-                {
-                    if(areTilesAdjacent(selected_tile,currentTile))
+                    Vector2 currentTile = (Vector2){x, y};
+                    if (selected_tile.x < 0)
                     {
-                        swapTiles(selected_tile,currentTile);
-                        if(findMatches())
-                        {
-                            resolveMatches();
-                        }
-                        else
-                        {
-                            swapTiles(selected_tile,currentTile);
-                        }
+                        selected_tile = currentTile;
                     }
-                    selected_tile = (Vector2){-1,-1};
+                    else
+                    {
+                        if (areTilesAdjacent(selected_tile, currentTile))
+                        {
+                            swapTiles(selected_tile, currentTile);
+                            if (findMatches())
+                            {
+                                resolveMatches();
+                            }
+                            else
+                            {
+                                swapTiles(selected_tile, currentTile);
+                            }
+                        }
+                        selected_tile = (Vector2){-1, -1};
+                    }
                 }
+            }
+            //Rotate left
+            else if (IsKeyPressed(KEY_W))
+            {
+                RotateBoardClockwise();
+            }
+            // Rotate Right
+            else if (IsKeyPressed(KEY_E))
+            {
+                RotateBoardClockwise();
             }
         }
 
@@ -316,12 +345,12 @@ int main(void)
             {
                 for (int x = 0; x < BOARD_SIZE; x++)
                 {
-                    if (fallOffsets[y][x] > 0)
+                    if (fallOffsets[y * BOARD_SIZE + x] > 0)
                     {
-                        fallOffsets[y][x] -= fallSpeed;
-                        if (fallOffsets[y][x] < 0)
+                        fallOffsets[y * BOARD_SIZE + x] -= fallSpeed;
+                        if (fallOffsets[y * BOARD_SIZE + x] < 0)
                         {
-                            fallOffsets[y][x] = 0;
+                            fallOffsets[y * BOARD_SIZE + x] = 0;
                         }
                         else
                         {
@@ -379,14 +408,14 @@ int main(void)
 
                 DrawRectangleLinesEx(rect, 1, DARKGRAY);
 
-                if (board[y][x] != ' ')
+                if (board[y * BOARD_SIZE + x] != ' ')
                 {
                     DrawTextEx(GetFontDefault(),
-                               TextFormat("%c", board[y][x]),
-                               (Vector2){rect.x + 12, rect.y + 8 - fallOffsets[y][x]},
+                               TextFormat("%c", board[y * BOARD_SIZE + x]),
+                               (Vector2){rect.x + 12, rect.y + 8 - fallOffsets[y * BOARD_SIZE + x]},
                                20,
                                1,
-                               matched[y][x] ? GREEN : WHITE);
+                               matched[y * BOARD_SIZE + x] ? GREEN : WHITE);
                 }
             }
         }
