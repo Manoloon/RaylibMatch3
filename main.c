@@ -65,19 +65,9 @@ void addScorePopup(int x , int y , int amount)
         }
     }
 }
-
-bool findMatches(void)
+bool SearchHorizontally(void)
 {
-    bool found = false;
-    for (int y = 0; y < BOARD_SIZE; y++)
-    {
-        for (int x = 0; x < BOARD_SIZE; x++)
-        {
-            matched[y][x] = false;
-        }
-    }
-    // HORIZONTAL CHECK
-    for (int y = 0; y < BOARD_SIZE; y++)
+        for (int y = 0; y < BOARD_SIZE; y++)
     {
         for (int x = 0; x < BOARD_SIZE - 2; x++)
         {
@@ -86,17 +76,21 @@ bool findMatches(void)
             {
                 matched[y][x] = matched[y][x + 1] = matched[y][x + 2] = true;
                 score += 10;
-                found = true;
+                
                 // playSound()
 
                 scoreAnimating = true;
                 scoreScale = 2.0f;
                 scoreScaleVelocity = -2.5f;
                 addScorePopup(x,y,10);
+                return true;
             }
         }
     }
-    // VERTICAL CHECK
+    return false;
+}
+bool SearchVertically(void)
+{
     for (int x = 0; x < BOARD_SIZE; x++)
     {
         for (int y = 0; y < BOARD_SIZE - 2; y++)
@@ -106,17 +100,31 @@ bool findMatches(void)
             {
                 matched[y][x] = matched[y + 1][x] = matched[y + 2][x] = true;
                 score += 10;
-                found = true;
+               
                 // playSound()
                 scoreAnimating = true;
                 scoreScale = 2.0f;
                 scoreScaleVelocity = -2.5f;
                 addScorePopup(x,y,10);
+                return true;
             }
         }
     }
-    return found;
+    return false;
 }
+
+bool findMatches(void)
+{
+    for (int y = 0; y < BOARD_SIZE; y++)
+    {
+        for (int x = 0; x < BOARD_SIZE; x++)
+        {
+            matched[y][x] = false;
+        }
+    }
+    return SearchHorizontally() || SearchVertically();
+}
+
 void resolveMatches(void)
 {
     for (int x = 0; x < BOARD_SIZE; x++)
@@ -181,6 +189,37 @@ bool areTilesAdjacent(Vector2 A, Vector2 B)
     return (abs((int)A.x - (int)B.x) + abs((int)A.y - (int)B.y)) == 1;
 }
 
+void UpdateScorePopup(void)
+{
+    for (int i = 0; i < MAX_SCORE_POPUPS; i++)
+    {
+        if (scorePopups[i].active)
+        {
+            scorePopups[i].lifetime -= GetFrameTime();
+            scorePopups[i].position.y -= 30 * GetFrameTime();
+            scorePopups[i].alpha = scorePopups[i].lifetime;
+
+            if (scorePopups[i].lifetime <= 0.0f)
+            {
+                scorePopups[i].active = -false;
+            }
+        }
+    }
+}
+
+void UpdateScorePopupAnimation(void)
+{
+    if (scoreAnimating)
+    {
+        scoreScale += scoreScaleVelocity * GetFrameTime();
+        if (scoreScale <= 1.0f)
+        {
+            scoreScale = 1.0f;
+            scoreAnimating = false;
+        }
+    }
+}
+
 int main(void)
 {
     const int screen_width = 800;
@@ -201,11 +240,15 @@ int main(void)
     // SetSoundVolume(sfx,0.4f);
 
     initBoard();
+
+    /////////////////////////// LOOP ////////////////////////////////////
     while (!WindowShouldClose())
     {
         // UpdateMusicStream(bgm);
         // update mouse pos
         mouse = GetMousePosition();
+
+        /// Gameplay
         if (TileState == STATE_IDLE && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
             int x = (mouse.x - grid_origin.x) / TILE_SIZE;
@@ -279,32 +322,13 @@ int main(void)
                 }
             }
         }
+
         // Update score popup
-        for(int i = 0; i < MAX_SCORE_POPUPS;i++)
-        {
-            if(scorePopups[i].active)
-            {
-                scorePopups[i].lifetime -= GetFrameTime();
-                scorePopups[i].position.y -= 30 * GetFrameTime();
-                scorePopups[i].alpha = scorePopups[i].lifetime;
-
-                if(scorePopups[i].lifetime <= 0.0f)
-                {
-                    scorePopups[i].active =- false;
-                }
-            }
-        }
+        UpdateScorePopup();
         // update score animation
-        if(scoreAnimating)
-        {
-            scoreScale += scoreScaleVelocity * GetFrameTime();
-            if(scoreScale <= 1.0f)
-            {
-                scoreScale = 1.0f;
-                scoreAnimating = false;
-            }
-        }
+        UpdateScorePopupAnimation();
 
+        ///////////////////// DRAW ///////////////////////////////////////
         BeginDrawing();
         ClearBackground(BLACK);
 
