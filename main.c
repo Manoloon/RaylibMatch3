@@ -220,6 +220,35 @@ void UpdateScorePopupAnimation(void)
     }
 }
 
+void DrawScorePopups(void)
+{
+    for (int i = 0; i < MAX_SCORE_POPUPS; i++)
+    {
+        if (scorePopups[i].active)
+        {
+            Color col = Fade(YELLOW, scorePopups[i].alpha);
+            DrawText(TextFormat("+%d", scorePopups[i].amount),
+                     scorePopups[i].position.x,
+                     scorePopups[i].position.y,
+                     20,
+                     col);
+        }
+    }
+}
+void DrawSelectedTile(const Vector2 SelectedTile)
+{
+            if (SelectedTile.x >= 0)
+        {
+            DrawRectangleLinesEx((Rectangle){grid_origin.x + (SelectedTile.x * TILE_SIZE),
+                                             grid_origin.y + (SelectedTile.y * TILE_SIZE),
+                                             TILE_SIZE,
+                                             TILE_SIZE},
+                                 2,
+                                 YELLOW);
+        }
+        DrawText(TextFormat("Score: %d", score), 20, 20, 20, YELLOW);
+}
+
 int main(void)
 {
     const int screen_width = 800;
@@ -362,30 +391,8 @@ int main(void)
             }
         }
 
-        // DRAW SELECTED TILE
-        if (selected_tile.x >= 0)
-        {
-            DrawRectangleLinesEx((Rectangle){grid_origin.x + (selected_tile.x * TILE_SIZE),
-                                             grid_origin.y + (selected_tile.y * TILE_SIZE),
-                                             TILE_SIZE,
-                                             TILE_SIZE},
-                                 2,
-                                 YELLOW);
-        }
-        DrawText(TextFormat("Score: %d", score), 20, 20, 20, YELLOW);
-
-        // Draw score popups
-        for(int i = 0;i < MAX_SCORE_POPUPS;i++)
-        {
-            if(scorePopups[i].active)
-            {
-                Color col = Fade(YELLOW,scorePopups[i].alpha);
-                DrawText(TextFormat("+%d",scorePopups[i].amount),
-                                    scorePopups[i].position.x,
-                                    scorePopups[i].position.y,
-                                    20,col);
-            }
-        }
+        DrawSelectedTile(selected_tile);
+        DrawScorePopups();
 
         EndDrawing();
     }
