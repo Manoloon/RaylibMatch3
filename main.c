@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define BOARD_SIZE 8
+#define BOARD_SIZE 3
 #define BOARD_SQUARED_SIZE BOARD_SIZE*BOARD_SIZE
 #define TILE_SIZE 32
 #define TILE_TYPES 5
@@ -251,8 +251,12 @@ void DrawSelectedTile(const Vector2 SelectedTile)
         }
         DrawText(TextFormat("Score: %d", score), 20, 20, 20, YELLOW);
 }
-
-void RotateBoardClockwise(void)
+// rotations 
+// UP = y * dimension + x
+// RIGHT = dimension * (dimension - 1) - dimension * x + y
+// DOWN = (dimension * dimension -1) - dimension * x - y
+// LEFT = dimension - 1 + dimension * x - y 
+void RotateClockwise(void)
 {
     char result[BOARD_SQUARED_SIZE];
     for(int y = 0; y < BOARD_SIZE;y++)
@@ -260,6 +264,19 @@ void RotateBoardClockwise(void)
         for(int x = 0; x < BOARD_SIZE;x++)
         {
             result[y * BOARD_SIZE + x] = board[BOARD_SIZE * (BOARD_SIZE -1) - BOARD_SIZE * x + y];
+        }
+    }
+    memcpy(board, result, sizeof(result));
+}
+
+void RotateCounterClockwise(void)
+{
+    char result[BOARD_SQUARED_SIZE];
+    for(int y = 0; y < BOARD_SIZE;y++)
+    {
+        for(int x = 0; x < BOARD_SIZE;x++)
+        {
+            result[y * BOARD_SIZE + x] = board[BOARD_SIZE -1 + BOARD_SIZE * x - y];
         }
     }
     memcpy(board, result, sizeof(result));
@@ -328,12 +345,12 @@ int main(void)
             //Rotate left
             else if (IsKeyPressed(KEY_W))
             {
-                RotateBoardClockwise();
+                RotateCounterClockwise();
             }
             // Rotate Right
             else if (IsKeyPressed(KEY_E))
             {
-                RotateBoardClockwise();
+                RotateClockwise();
             }
         }
 
